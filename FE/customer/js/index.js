@@ -38,49 +38,40 @@ window.onresize = function(event) {
     reloadSlider();
 };
 
-document.addEventListener("DOMContentLoaded", () => {
-    const productGrid = document.getElementById("productGrid");
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const response = await fetch("http://localhost/gomseller/BE/api/get_low_price_products.php");
+        const products = await response.json();
 
-    // Lấy danh sách sản phẩm từ localStorage
-    const products = JSON.parse(localStorage.getItem("products")) || [];
+        // Kiểm tra API trả về đúng dữ liệu
+        if (!products.sale || !products.best_sellers) {
+            console.error("Lỗi: API không trả về dữ liệu đúng");
+            return;
+        }
 
+        // Hiển thị sản phẩm vào hai section
+        renderProducts(products.sale, "productGrid", true);
+        renderProducts(products.best_sellers, "productGrids", false);
+    } catch (error) {
+        console.error("Lỗi khi lấy dữ liệu sản phẩm:", error);
+    }
+});
 
-    const randomProducts = products.sort(() => 0.5 - Math.random()).slice(0, 6);
+// Hàm hiển thị sản phẩm
+function renderProducts(products, containerId, isSale = false) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = ""; // Xóa nội dung cũ trước khi render
 
-    // Tạo HTML cho từng sản phẩm và thêm vào productGrid
-    randomProducts.forEach((product) => {
+    products.forEach((product) => {
         const productHTML = `
             <div class="product-item">
-                <p class="sale">Sale</p>
-                <img src="${product.image}" alt="${product.name}" class="product-image">
-                <h3 class="product-name">${product.name}</h3>
-                <p class="product-price">${product.price.toLocaleString()} VND</p>
+                ${isSale ? `<p class="sale">Sale</p>` : ""}
+                <img src="${product.image}" alt="${product.product_name}" class="product-image">
+                <h3 class="product-name">${product.product_name}</h3>
+                <p class="product-price">${parseInt(product.price).toLocaleString()} VND</p>
                 <button class="buy-btn">Thêm vào giỏ</button>
             </div>
         `;
-        productGrid.innerHTML += productHTML;
+        container.innerHTML += productHTML;
     });
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-    const productGrid = document.getElementById("productGrids");
-
-    // Lấy danh sách sản phẩm từ localStorage
-    const products = JSON.parse(localStorage.getItem("products")) || [];
-
-
-    const randomProducts = products.sort(() => 0.5 - Math.random()).slice(0, 10);
-
-    // Tạo HTML cho từng sản phẩm và thêm vào productGrids
-    randomProducts.forEach((product) => {
-        const productHTML = `
-            <div class="product-item">
-                <img src="${product.image}" alt="${product.name}" class="product-image">
-                <h3 class="product-name">${product.name}</h3>
-                <p class="product-price">${product.price.toLocaleString()} VND</p>
-                <button class="buy-btn">Thêm vào giỏ</button>
-            </div>
-        `;
-        productGrid.innerHTML += productHTML;
-    });
-});
+}

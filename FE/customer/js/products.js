@@ -1,26 +1,54 @@
+document.addEventListener("DOMContentLoaded", async () => {
+    const categoryId = 2; // Chỉ lấy sản phẩm có category_id = 2 (Ấm chén)
 
-// Lấy dữ liệu sản phẩm từ localStorage
-const products = JSON.parse(localStorage.getItem('products')) || [];
+    try {
+        console.log(`Gọi API lấy sản phẩm của category_id = ${categoryId}`);
 
-// Tìm phần tử để chèn sản phẩm vào
-const productsGrid = document.getElementById("productsGrid");
+        const response = await fetch(`http://localhost/gomseller/BE/api/get_products.php?category_id=${categoryId}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            }
+        });
 
-// Duyệt qua các sản phẩm và thêm chúng vào trang
-products.forEach(product => {
-    const productCard = document.createElement("div");
-    productCard.classList.add("product-card");
+        if (!response.ok) {
+            throw new Error(`Lỗi HTTP! Trạng thái: ${response.status}`);
+        }
 
-    productCard.innerHTML = `
-        <img src="${product.image}" alt="${product.name}">
-        <h3>${product.name}</h3>
-        <p>Giá: ${product.price}đ</p>
-        <p>${product.description}</p>
-        <button class="buy-btn">Thêm vào giỏ</button>
-    `;
+        const products = await response.json();
 
-    productsGrid.appendChild(productCard);
+        console.log("Dữ liệu sản phẩm nhận được:", products); // Debug
+
+        if (!products || products.length === 0) {
+            document.getElementById("productsGrid").innerHTML = "<p>Không có sản phẩm nào.</p>";
+            return;
+        }
+
+        renderProducts(products);
+    } catch (error) {
+        console.error("Lỗi khi lấy dữ liệu sản phẩm:", error);
+    }
 });
 
+
+// Hàm hiển thị sản phẩm
+function renderProducts(products) {
+    const container = document.getElementById("productsGrid");
+    container.innerHTML = ""; // Xóa nội dung cũ
+
+    products.forEach((product) => {
+        const productHTML = `
+            <div class="product-card">
+                <img src="${product.image}" alt="${product.product_name}">
+                <h3>${product.product_name}</h3>
+                <p>${product.description}</p>
+                <p>Giá: ${parseInt(product.price).toLocaleString()} VNĐ</p>
+                <button onclick="addToCart(${product.product_id})">Thêm vào giỏ</button>
+            </div>
+        `;
+        container.innerHTML += productHTML;
+    });
+}
 
 
 // Hàm thêm sản phẩm vào giỏ hàng

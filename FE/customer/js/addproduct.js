@@ -1,46 +1,52 @@
-document.getElementById("addProductForm").addEventListener("submit", function (e) {
-    e.preventDefault(); // Ngăn chặn reload trang
+document.addEventListener("DOMContentLoaded", function () {
+    // Load danh mục vào select
+    fetch("/BE/api/get_categories.php")
+        .then(response => response.json())
+        .then(data => {
+            let categorySelect = document.getElementById("category");
 
-    // Lấy thông tin từ form
-    const productName = document.getElementById("productName").value;
-    const productPrice = document.getElementById("productPrice").value;
-    const productDescription = document.getElementById("productDescription").value;
-    const productImage = document.getElementById("productImage").files[0]; // Lấy file hình ảnh đã chọn
-    const productTag = document.getElementById("productTag").value; // Lấy giá trị tag
+            if (data.success === false) {
+                alert(data.message);
+                return;
+            }
 
-    // Nếu người dùng chưa chọn hình ảnh thì không thêm sản phẩm
-    if (!productImage) {
-        alert("Vui lòng chọn hình ảnh");
-        return;
-    }
+            data.forEach(category => {
+                let option = document.createElement("option");
+                option.value = category.category_id;
+                option.textContent = category.category_name;
+                categorySelect.appendChild(option);
+            });
+        })
+        .catch(error => console.error("Lỗi tải danh mục:", error));
+});
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        // Tạo đối tượng sản phẩm
-        const newProduct = {
-            name: productName,
-            price: productPrice,
-            description: productDescription,
-            image: e.target.result, // Lưu ảnh dưới dạng base64
-            tag: productTag // Lưu tag
-        };
+document.getElementById("addProductForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
 
-        // Lấy danh sách sản phẩm từ localStorage
-        let products = JSON.parse(localStorage.getItem('products')) || [];
-        
-        // Phân loại sản phẩm theo tag
-        if (productTag === "Ấm chén") {
-            newProduct.page = "product"; // Lưu tag để phân loại
-        } else if (productTag === "Bình gốm") {
-            newProduct.page = "product-binhgom"; // Lưu tag để phân loại
+    let formData = new FormData();
+    formData.append("productName", document.getElementById("productName").value);
+    formData.append("productPrice", document.getElementById("productPrice").value);
+    formData.append("productDescription", document.getElementById("productDescription").value);
+    formData.append("category_id", document.getElementById("category").value);
+    formData.append("productImage", document.getElementById("productImage").files[0]);
+
+    try {
+        let response = await fetch("/BE/api/add_product.php", {
+            method: "POST",
+            body: formData
+        });
+
+        let result = await response.json();
+        console.log(result);
+
+        if (result.success) {
+            alert("Thêm sản phẩm thành công!");
+            document.getElementById("addProductForm").reset();
+        } else {
+            alert("Lỗi: " + result.message);
         }
-
-        // Lưu sản phẩm vào LocalStorage
-        products.push(newProduct);
-        localStorage.setItem('products', JSON.stringify(products));
-
-        alert("Sản phẩm đã được thêm thành công!");
-    };
-    
-    reader.readAsDataURL(productImage); // Đọc ảnh dưới dạng base64
+    } catch (error) {
+        console.error("Lỗi:", error);
+        alert("Lỗi khi gửi dữ liệu!");
+    }
 });
