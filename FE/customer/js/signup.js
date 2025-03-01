@@ -1,61 +1,61 @@
- // Lấy các input cần kiểm tra
- const nameInput = document.getElementById('text');
- const dateInput = document.getElementById('date');
- const numberInput = document.getElementById('number');
- const emailInput = document.getElementById('email');
- const userInput = document.getElementById('user');
- const passwordInput = document.getElementById('password');
+document.getElementById("signup-form").addEventListener("submit", async function(event) {
+    event.preventDefault();
 
- // Lấy nút Đăng ký
- const btn = document.querySelector('.btn');
+    let username = document.getElementById("user").value.trim();
+    let email = document.getElementById("email").value.trim();
+    let password = document.getElementById("password").value.trim();
+    
+    // Reset error messages
+    document.getElementById("userError").innerText = "";
+    document.getElementById("emailError").innerText = "";
+    document.getElementById("passwordError").innerText = "";
 
- // Hàm kiểm tra lỗi
- function validateInput() {
-     // Kiểm tra từng input
-     if (nameInput.value === '') {
-         showError('nameError', 'Vui lòng nhập họ tên');
-         return false;
-     }
+    // Validate input
+    let errors = false;
+    if (username.length < 4) {
+        document.getElementById("userError").innerText = "Tên đăng nhập phải có ít nhất 4 ký tự.";
+        errors = true;
+    }
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        document.getElementById("emailError").innerText = "Email không hợp lệ.";
+        errors = true;
+    }
+    if (password.length < 6) {
+        document.getElementById("passwordError").innerText = "Mật khẩu phải có ít nhất 6 ký tự.";
+        errors = true;
+    }
 
-     if (dateInput.value === '') {
-         showError('dateError', 'Vui lòng nhập ngày tháng năm sinh');
-         return false;
-     }
+    if (errors) return;
 
-     if (numberInput.value === '') {
-         showError('numberError', 'Vui lòng nhập số điện thoại');
-         return false;
-     }
+    // Gửi dữ liệu đến PHP bằng Fetch API
+    let formData = new FormData();
+    formData.append("username", username);
+    formData.append("email", email);
+    formData.append("password", password);
 
-     if (emailInput.value === '') {
-         showError('emailError', 'Vui lòng nhập email');
-         return false;
-     }
+    try {
+        let response = await fetch("/BE/api/signup.php", {
+            method: "POST",
+            body: formData
+        });
 
-     if (userInput.value === '') {
-         showError('userError', 'Vui lòng nhập tên đăng nhập');
-         return false;
-     }
+        if (!response.ok) {
+            throw new Error("Lỗi kết nối server: " + response.status);
+        }
 
-     if (passwordInput.value === '') {
-         showError('passwordError', 'Vui lòng nhập mật khẩu');
-         return false;
-     }
-
-     return true;
- }
-
- // Hàm hiển thị lỗi
- function showError(errorId, mess) {
-     document.getElementById(errorId).innerText = mess;
- }
-
- // Hàm xử lý sự kiện click Đăng ký
- function submitForm() {
-     // Gọi hàm kiểm tra
-     if (!validateInput()) {
-         return;
-     }
-     // Submit form nếu hợp lệ
-     document.getElementById('signup-form').submit();
- }
+        let result = await response.json();
+        if (result.success) {
+            alert("Đăng ký thành công! Chuyển hướng đến trang đăng nhập.");
+            window.location.href = "/FE/customer/views/login.html"; // Sử dụng đường dẫn tuyệt đối
+        } else {
+            if (result.error_field) {
+                document.getElementById(result.error_field).innerText = result.message;
+            } else {
+                alert(result.message);
+            }
+        }
+    } catch (error) {
+        console.error("Lỗi kết nối:", error);
+        alert("Đã xảy ra lỗi, vui lòng thử lại sau: " + error.message);
+    }
+});

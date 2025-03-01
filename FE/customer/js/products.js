@@ -34,50 +34,99 @@ document.addEventListener("DOMContentLoaded", async () => {
 // Hàm hiển thị sản phẩm
 function renderProducts(products) {
     const container = document.getElementById("productsGrid");
+    if (!container) {
+        console.error("Không tìm thấy phần tử productsGrid");
+        return;
+    }
+
     container.innerHTML = ""; // Xóa nội dung cũ
 
     products.forEach((product) => {
         const productHTML = `
-            <div class="product-card">
+            <div class="product-card" onclick="window.location.href='/FE/customer/views/product-detail.html?id=${product.product_id}'">
                 <img src="${product.image}" alt="${product.product_name}">
                 <h3>${product.product_name}</h3>
-                <p>${product.description}</p>
+                
                 <p>Giá: ${parseInt(product.price).toLocaleString()} VNĐ</p>
-                <button onclick="addToCart(${product.product_id})">Thêm vào giỏ</button>
+                <button class="buy-btn" data-product-id="${product.product_id}">Thêm vào giỏ</button>
             </div>
         `;
         container.innerHTML += productHTML;
     });
-}
 
+    // Gắn sự kiện onclick sau khi render
+    document.querySelectorAll('.buy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const productId = parseInt(btn.getAttribute('data-product-id'));
+            addToCart(productId);
+        });
+    });
+}
 
 // Hàm thêm sản phẩm vào giỏ hàng
-function addToCart(product) {
-    // Lấy danh sách sản phẩm từ localStorage
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-    // Kiểm tra nếu sản phẩm đã tồn tại trong giỏ, tăng số lượng
-    const existingProduct = cart.find(item => item.id === product.id);
-    if (existingProduct) {
-        existingProduct.quantity += 1;
-    } else {
-        cart.push({ ...product, quantity: 1 });
+async function addToCart(productId) {
+    const loggedInUser = localStorage.getItem("loggedInUser");
+    if (!loggedInUser) {
+        alert("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
+        window.location.href = "/FE/customer/views/login.html";
+        return;
     }
 
-    // Lưu lại vào localStorage
-    localStorage.setItem('cart', JSON.stringify(cart));
+    let userId = localStorage.getItem("loggedInUserId"); // Lấy từ localStorage trước
+    if (!userId) {
+        // Nếu chưa có userId, lấy từ API
+        userId = await window.getUserId(loggedInUser);
+        if (!userId) {
+            alert("Không thể lấy thông tin người dùng. Vui lòng đăng nhập lại.");
+            return;
+        }
+        localStorage.setItem("loggedInUserId", userId); // Lưu lại để dùng sau
+    }
 
-    alert("Sản phẩm đã được thêm vào giỏ!");
+    if (!productId || isNaN(productId) || productId <= 0) {
+        alert("Sản phẩm không hợp lệ. Vui lòng thử lại.");
+        console.error("Product ID không hợp lệ:", productId);
+        return;
+    }
+
+    try {
+        let response = await fetch(`http://localhost:3000/BE/api/cart.php`, {
+            method: "PUT",
+            body: JSON.stringify({ user_id: userId, product_id: productId, quantity: 1 }),
+            headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) {
+            let errorText = await response.text();
+            console.error("Lỗi từ server:", errorText);
+            throw new Error("Lỗi thêm sản phẩm vào giỏ: " + errorText);
+        }
+
+        let result = await response.json();
+        if (result.success) {
+            alert("Thêm vào giỏ thành công!");
+            // Tùy chọn: Chuyển hướng về giỏ hàng
+            // window.location.href = "/FE/customer/views/cart.html";
+        } else {
+            alert("Lỗi: " + result.message);
+        }
+    } catch (error) {
+        console.error("Lỗi:", error);
+        alert("Không thể thêm sản phẩm vào giỏ. Vui lòng thử lại: " + error.message);
+    }
 }
 
-// Ví dụ gọi hàm khi bấm nút "Thêm vào giỏ"
-document.querySelectorAll('.buy-btn').forEach(button => {
-    button.addEventListener('click', () => {
-        const product = {
-            id: button.dataset.id,
-            name: button.dataset.name,
-            price: parseFloat(button.dataset.price),
-        };
-        addToCart(product);
-    });
-});
+// Định nghĩa window.getUserId (giả sử từ cart.js hoặc thêm vào đây)
+window.getUserId = async (username) => {
+    try {
+        let response = await fetch(`http://localhost:3000/BE/api/user.php?username=${username}`, {
+            method: "GET",
+        });
+        let result = await response.json();
+        if (result.success) return result.user_id;
+        return null;
+    } catch (error) {
+        console.error("Lỗi getUserId:", error);
+        return null;
+    }
+};

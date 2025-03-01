@@ -1,55 +1,73 @@
-// Hiển thị các sản phẩm từ localStorage
-function displayProducts() {
-    const products = JSON.parse(localStorage.getItem('products')) || [];
-    const productGrid = document.getElementById("productGrid");
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const response = await fetch(`http://localhost/gomseller/BE/api/get_all_products.php`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`Lỗi HTTP! Trạng thái: ${response.status}`);
+        }
+        const products = await response.json();
+        console.log("Dữ liệu sản phẩm nhận được:", products); // Debug
+        if (!products || products.length === 0) {
+            document.getElementById("productsGrid").innerHTML = "<p>Không có sản phẩm nào.</p>";
+            return;
+        }
+        renderProducts(products);
+    } catch (error) {
+        console.error("Lỗi khi lấy dữ liệu sản phẩm:", error);
+    }
+});
 
-    productGrid.innerHTML = ''; // Xóa các sản phẩm cũ
 
-    if (products.length === 0) {
-        productGrid.innerHTML = "<p>Không có sản phẩm nào để hiển thị</p>";
+// Hàm hiển thị sản phẩm
+function renderProducts(products) {
+    const container = document.getElementById("productsGrid");
+    if (!container) {
+        console.error("Không tìm thấy phần tử productsGrid");
+        return;
     }
 
-    products.forEach((product, index) => {
-        const productCard = document.createElement('div');
-        productCard.classList.add('product-card');
+    container.innerHTML = ""; // Xóa nội dung cũ
 
-        // Tạo thẻ HTML cho từng sản phẩm
-        productCard.innerHTML = `
-            <img src="${product.image}" alt="${product.name}">
-            <h3>${product.name}</h3>
-            <p>Giá: ${product.price}đ</p>
-            <p>${product.description}</p>
-            <button class="delete-btn" data-index="${index}">Xóa</button>
-        `;
-
-        productGrid.appendChild(productCard); // Thêm sản phẩm vào grid
+    products.forEach((product) => {
+        const productHTML = `
+            <img src="${product.image}" alt="${product.product_name}" class="product-image" 
+                     onerror="this.onerror=null;this.src='http://localhost/gomseller/uploads/default.jpg';">
+                <h3 class="product-name">${product.product_name}</h3>
+                <p class="product-price">${parseInt(product.price).toLocaleString()} VND</p>
+                <button onclick="deleteProduct(${product.product_id})">Xóa</button>
+            `;
+        container.innerHTML += productHTML;
     });
+}
 
-    // Lắng nghe sự kiện xóa sản phẩm
-    const deleteButtons = document.querySelectorAll(".delete-btn");
-    deleteButtons.forEach(button => {
-        button.addEventListener("click", function() {
-            const productIndex = button.getAttribute("data-index");
-            deleteProduct(productIndex);
+async function deleteProduct(productId) {
+    if (!confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/BE/api/delete_product.php?product_id=${productId}`, {
+            method: 'DELETE',
         });
-    });
+
+        if (!response.ok) {
+            throw new Error('Lỗi khi xóa sản phẩm');
+        }
+
+        const result = await response.json();
+        alert(result.message || 'Xóa sản phẩm thành công!');
+        // Xóa sản phẩm khỏi giao diện
+        const productItem = document.querySelector(`.product-item[data-product-id="${productId}"]`);
+        if (productItem) productItem.remove();
+    } catch (error) {
+        console.error('Lỗi:', error);
+        alert('Không thể xóa sản phẩm. Vui lòng thử lại: ' + error.message);
+    }
 }
 
-// Hàm xóa sản phẩm khỏi localStorage
-function deleteProduct(index) {
-    let products = JSON.parse(localStorage.getItem('products')) || [];
-    
-    // Xóa sản phẩm tại chỉ mục tương ứng
-    products.splice(index, 1);
-
-    // Cập nhật lại localStorage
-    localStorage.setItem('products', JSON.stringify(products));
-
-    // Hiển thị lại danh sách sản phẩm sau khi xóa
-    displayProducts();
-}
-
-// Khi trang được tải lại, gọi hàm displayProducts để hiển thị các sản phẩm
-window.onload = function() {
-    displayProducts();
-};
+// Gắn hàm deleteProduct vào window để sử dụng trong HTML
+window.deleteProduct = deleteProduct;

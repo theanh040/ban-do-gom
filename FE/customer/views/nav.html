@@ -21,10 +21,11 @@
 
                 <!-- Thanh tìm kiếm -->
                 <form class="search">
-                    <input type="text" class="search-text" placeholder="Tìm kiếm...">
+                    <input type="text" class="search-text" id="searchInput" placeholder="Tìm kiếm..." oninput="handleSearch()">
                     <button class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
                 </form>
-
+                <div id="searchResultsContainer" class="search-results"></div>
+                
                 <!-- Thông tin vị trí -->
                 <div id="location">
                     <div id="map" style="width: 200px; height: 40px;"></div> 
